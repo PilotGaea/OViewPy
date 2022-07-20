@@ -1,0 +1,24 @@
+Metadata-Version: 2.1
+Name: OViewPy
+Version: 1.0
+Summary: PilotGaea O'View Map Server API for Python
+Home-page: https://github.com/PilotGaea/OViewPy
+Author: louis.li
+Author-email: louis.li@pilotgaea.com.tw
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Scientific/Engineering :: GIS
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: license.txt
+
+# PilotGaea O'View Map Server API for Python
+
+使用 PilotGaea O'View Map Server API for Python 在 Python 中處理O'View Map Server發布的地圖和地理空間數據。
+
+這個library可讀取、編輯、分析、上架由O'View Map Server發布之地圖圖像與向量資料，並可透過API操作輸出及發佈處理後的成果。
+
+此library只支援由 O'View Map Server 發佈的圖資，暫不支援外部資料處理。
+

@@ -1,7 +1,7 @@
 import string
 
 from numpy import number
-from pgpy.varstruct import VarStruct
+from OViewPy.varstruct import VarStruct
 import requests
 
 

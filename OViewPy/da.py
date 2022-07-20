@@ -8,7 +8,7 @@ import shapefile
 from decimal import Decimal
 from progress.bar import Bar
 from shapely.geometry import shape, mapping
-from pgpy.varstruct import GeoBoundary, VarStruct
+from OViewPy.varstruct import GeoBoundary, VarStruct
 
 
 class da:

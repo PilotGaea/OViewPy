@@ -5,8 +5,8 @@ import threading
 import time
 from progress.spinner import Spinner
 from progress.bar import Bar
-from pgpy.server import Server
-from pgpy.varstruct import VarStruct, GeoBoundary, GeoPolygon
+from OViewPy.server import Server
+from OViewPy.varstruct import VarStruct, GeoBoundary, GeoPolygon
 
 
 class OViewLayer:
