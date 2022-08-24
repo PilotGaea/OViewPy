@@ -8,6 +8,7 @@ import shapefile
 from decimal import Decimal
 from progress.bar import Bar
 from shapely.geometry import shape, mapping
+from sridentify import Sridentify
 from OViewPy.varstruct import GeoBoundary, VarStruct
 
 
@@ -129,7 +130,7 @@ class da:
 
     @staticmethod
     def saveImg(img: bytes, savePath: string = ".", imgName: string = "defaultImg", imgType: string = "png", worldFile: bool = False, boundary: GeoBoundary = None) -> bool:
-        if img == None:
+        if img is None:
             return False
         imgIndex = 1
         if imgType == "jpg":
@@ -150,33 +151,30 @@ class da:
             worldFilePath = f"{savePath}/{imgName}{imgIndex}.{worldFileType}"
         image = np.frombuffer(img, dtype="uint8")
         image = cv2.imdecode(image, cv2.IMREAD_UNCHANGED)
-        height, width, channels = image.shape
-        image = cv2.imencode("."+imgType, image)[1]
-        image = image.tobytes()
-        try:
-            with open(imgPath, 'wb') as f:
-                f.write(image)
+        img = cv2.imencode("."+imgType, image)[1]
+        img = img.tobytes()
+        with open(imgPath, 'wb') as f:
+                f.write(img)
                 f.flush()
-            if worldFile and boundary:
-                with open(worldFilePath, 'w') as f:
-                    f.write(str(Decimal((boundary.east - boundary.west)/width)))
-                    f.write("\n")
-                    f.write(str(0.0))
-                    f.write("\n")
-                    f.write(str(0.0))
-                    f.write("\n")
-                    f.write(str(Decimal((boundary.south - boundary.north)/height)))
-                    f.write("\n")
-                    f.write(str(boundary.west))
-                    f.write("\n")
-                    f.write(str(boundary.north))
-                    f.close()
-        except:
-            return False
+        if worldFile and boundary:
+            height, width, channels = image.shape
+            with open(worldFilePath, 'w') as worldFile:
+                worldFile.write(str(float((boundary.east - boundary.west)/width)))
+                worldFile.write("\n")
+                worldFile.write(str(0.0))
+                worldFile.write("\n")
+                worldFile.write(str(0.0))
+                worldFile.write("\n")
+                worldFile.write(str(float((boundary.south - boundary.north)/height)))
+                worldFile.write("\n")
+                worldFile.write(str(boundary.west))
+                worldFile.write("\n")
+                worldFile.write(str(boundary.north))
+                worldFile.close()
         return True
 
     @staticmethod
-    def saveAsShapeFile(sourceGeo: list, sourceAttr: list, savePath: string = ".", fileName: string = "defaultShp", encoding: string = "ansi") -> bool:
+    def saveAsShapeFile(sourceGeo: list, sourceAttr: list, epsg: int = 4326, savePath: string = ".", fileName: string = "defaultShp", encoding: string = "ansi") -> bool:
         if sourceGeo == None or sourceAttr == None:
             return False
         if type(sourceGeo[0]) == np.ndarray:
@@ -233,5 +231,7 @@ class da:
             geoBar.next()
         geoBar.finish()
         w.close()
+        ident = Sridentify()
+        ident.from_epsg(epsg)
+        ident.to_prj(f'{filePath}.prj')
         return True
-        

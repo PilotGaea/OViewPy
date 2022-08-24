@@ -90,14 +90,14 @@ server.deleteOViewLayer(layerName="ModelSet")
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 from OViewPy.da import da
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-layer = Layer(server=server,layerName="Town_MOI")
+layer = VectorLayer(server=server,layerName="Town_MOI")
 boundary=GeoBoundary(147522.218692, 2422004.773002,
                          351690.114369, 2813163.248085)
 # 取得圖片，取得成功會回傳圖片bytes資料
@@ -139,14 +139,14 @@ server.saveImageToServer(
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 from OViewPy.da import da
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-map = Layer(server=server, layerName="Town_MOI")
+map = VectorLayer(server=server, layerName="Town_MOI")
 # 設定搜尋條件
 sql = "County_ID==64"
 # 取得向量資料
@@ -161,35 +161,24 @@ server.saveVectorFileToServer(VectorFilePath="D:\\NCHCProject\\jupyter_notebook\
 
 ### 取得圖層物件
 
-透過此Module，可以取得OView Map Server上發布的影像圖層及向量圖層。<br/>
-第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。
-
-```python
-from OViewPy.server import Server
-from OViewPy.layer import Layer
-
-# 綁定Server物件
-server = Server(url="http://127.0.0.1:8080")
-# 綁定Layer物件
-layer = Layer(server=server,layerName="Town_MOI")
-```
-
+此Module分為`RasterLayer`與`VectorLayer`兩種圖層，在初始化圖層時請選擇正確的圖層分類。<br/>
+第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。<br/>
 取得圖層物件後，即可透過``getLayerInfo``取得圖層相關資訊。
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import RasterLayer,VectorLayer
 
-# 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
-# 綁定Layer物件
-layer = Layer(server=server,layerName="Town_MOI")
-# 取得圖層資訊
-layerInfo = layer.getLayerInfo()
-print(layerInfo)
+raster = RasterLayer(server=server,layerName="GlobalPreview_Rough")
+vector = VectorLayer(server=server,layerName="Town_MOI")
+print(raster.layerInfo)
+print(vector.layerInfo)
 ```
 
 透過``getMapImage``可取得給定範圍內的地圖圖片，此Function的參數如下：
+
+> 此Function適用於`RasterLayer`與`VectorLayer`。
 
 | 參數名稱 | Type | 預設值 | 說明 |
 | :-----: | :---: | :---: | :--: |
@@ -201,14 +190,14 @@ print(layerInfo)
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 from OViewPy.da import da
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-layer = Layer(server=server,layerName="Town_MOI")
+layer = VectorLayer(server=server,layerName="Town_MOI")
 # 取得圖片，取得成功會回傳圖片bytes資料
 img = layer.getMapImage(
     boundary=GeoBoundary(147522.218692, 2422004.773002,
@@ -222,28 +211,215 @@ img = layer.getMapImage(
 da.showImg(img)
 ```
 
-如果圖層格式為`向量圖層`，可透過`getVectorEmtity`取得一定範圍內的向量資料。<br/>
+如果圖層物件為`VectorLayer`，可透過`getVectorEmtity`取得一定範圍內的向量資料。<br/>
 此Function的參數如下：
 
 | 參數名稱 | Type | 預設值 | 說明 |
 | :-----: | :---: | :---: | :--: |
 | bound | GeoBoundary/GeoPolygon | None | 欲取得向量資料範圍。如未給值，將直接取得完整圖層向量資料。 |
 | epsg | int | 4326 | 座標參考系統 |
-| sql | strong | "" | 搜尋條件 |
+| sql | string | "" | 搜尋條件 |
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-map = Layer(server=server, layerName="Town_MOI")
+map = VectorLayer(server=server, layerName="Town_MOI")
 # 設定搜尋條件
 sql = "County_ID=64"
 # 取得向量資料
 ret = map.getVectorEmtity(epsg=3826,sql=sql)
+print("Geo：", ret["geo"][0].ToDict())
+print("Attr：", ret["attr"][0].ToDict())
+```
+
+## OViewLayer Module 
+
+此Module分為`TerrainLayer`、`PipeLineLayer`、`ModelLayer`、`ModelSetLayer`等4種3D模型圖層。<br/>
+第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。<br/>
+取得圖層物件後，即可透過``getLayerInfo``取得圖層相關資訊。
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer, PipeLineLayer, ModelLayer, ModelSetLayer
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(server=server, layerName="gebco_2021_geotiff_retransfer")
+PipeLine = PipeLineLayer(server=server, layerName="TaichungPipeline")
+Model = ModelLayer(server=server, layerName="ChungHsingBIM")
+ModelSet = ModelSetLayer(server=server, layerName="TaichungKMZ")
+print(Terrain.layerInfo)
+print(PipeLine.layerInfo)
+print(Model.layerInfo)
+print(ModelSet.layerInfo)
+```
+
+### TerrainLayer
+
+#### getDEMMatrix
+
+`TerrainLayer`可透過`getDEMMatrix`取得地形網格資料，此Function的參數如下：
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| boundary | GeoBoundary | None | 欲取得地形網格範圍。 |
+| cellDemSize | int | 500 | 地形網格數，將取得n*n個網格資料。 |
+| epsg | int | 4326 | boundary EPSG |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(
+    server=server, layerName="gebco_2021_geotiff_retransfer")
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+matrix = Terrain.getDEMMatrix(boundary=boundary, cellDemSize=500, epsg=4326)
+print(type(matrix))
+```
+
+#### hillshadeAnalysis
+
+取得山體陰影分析，分析結果將存為GeoTiff，此Function的參數如下：
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| boundary | GeoBoundary | None | 欲取得地形網格範圍。 |
+| cellDemSize | int | 500 | 地形網格數，將取得n*n個網格資料。 |
+| epsg | int | 4326 | boundary EPSG |
+| azimuth | int | 30 | 太陽方位角 |
+| altitude | int | 30 | 太陽高度角 |
+| savePath | string | "." | 檔案儲存位置 |
+| fileName | string | "defaultDEM" | 檔案名稱 |
+| width | int | 21600 | 圖片寬 |
+| height | int | 21600 | 圖片高 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(
+    server=server, layerName="gebco_2021_geotiff_retransfer")
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+Terrain.hillshadeAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,
+                          azimuth=150, altitude=60,
+                          savePath=".", fileName="defaultHillShade", width=10800, height=21600)
+
+```
+
+#### slopeAnalysis
+
+取得坡度分析，分析結果將存為GeoTiff，此Function的參數如下：
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| boundary | GeoBoundary | None | 欲取得地形網格範圍。 |
+| cellDemSize | int | 500 | 地形網格數，將取得n*n個網格資料。 |
+| epsg | int | 4326 | boundary EPSG |
+| savePath | string | "." | 檔案儲存位置 |
+| fileName | string | "defaultDEM" | 檔案名稱 |
+| width | int | 21600 | 圖片寬 |
+| height | int | 21600 | 圖片高 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(
+    server=server, layerName="gebco_2021_geotiff_retransfer")
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+Terrain.slopeAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,
+                      savePath=".", fileName="defaultSlope", width=10800, height=21600)
+
+```
+
+#### aspectAnalysis
+
+取得坡向分析，分析結果將存為GeoTiff，此Function的參數如下：
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| boundary | GeoBoundary | None | 欲取得地形網格範圍。 |
+| cellDemSize | int | 500 | 地形網格數，將取得n*n個網格資料。 |
+| epsg | int | 4326 | boundary EPSG |
+| savePath | string | "." | 檔案儲存位置 |
+| fileName | string | "defaultDEM" | 檔案名稱 |
+| width | int | 21600 | 圖片寬 |
+| height | int | 21600 | 圖片高 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(
+    server=server, layerName="gebco_2021_geotiff_retransfer")
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+Terrain.aspectAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,
+                      savePath=".", fileName="defaultAspect", width=10800, height=21600)
+
+```
+
+#### contourLineAnalysis
+
+取得等高線分析，分析結果將存為png/GeoJson，此Function的參數如下：
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| boundary | GeoBoundary | None | 欲取得地形網格範圍。 |
+| cellDemSize | int | 500 | 地形網格數，將取得n*n個網格資料。 |
+| epsg | int | 4326 | boundary EPSG |
+| savePath | string | "." | 檔案儲存位置 |
+| fileName | string | "defaultDEM" | 檔案名稱 |
+| fileType | string | "image" | 儲存類型，"image" / "geojson" |
+| width | int | 21600 | 圖片寬 |
+| height | int | 21600 | 圖片高 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+
+server = Server(url="http://127.0.0.1:8080")
+Terrain = TerrainLayer(
+    server=server, layerName="gebco_2021_geotiff_retransfer")
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+Terrain.contourLineAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,fileType="image",
+                      savePath=".", fileName="defaultContourLine", width=10800, height=21600)
+Terrain.contourLineAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,fileType="geojson",
+                      savePath=".", fileName="defaultContourLine")
+```
+
+### OViewEmtityLayer
+
+除了`TerrainLayer`外，其餘三種圖層皆屬於`OViewEmtityLayer`，可透過`getVectorEmtity`取得圖層Emtity。
+此Function參數如下：
+
+| 參數名稱 | Type | 預設值 | 說明 |
+| :-----: | :---: | :---: | :--: |
+| bound | GeoBoundary/GeoPolygon | None | 欲取得向量資料範圍。如未給值，將直接取得完整圖層向量資料。 |
+| epsg | int | 4326 | 座標參考系統 |
+| sql | string | "" | 搜尋條件 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import PipeLineLayer, ModelLayer, ModelSetLayer
+
+server = Server(url="http://127.0.0.1:8080")
+PipeLine = PipeLineLayer(server=server, layerName="TaichungPipeline")
+# Model = ModelLayer(server=server, layerName="ChungHsingBIM")
+# ModelSet = ModelSetLayer(server=server, layerName="TaichungKMZ")
+ret = PipeLine.getVectorEmtity()
 print("Geo：", ret["geo"][0].ToDict())
 print("Attr：", ret["attr"][0].ToDict())
 ```
@@ -258,7 +434,7 @@ print("Attr：", ret["attr"][0].ToDict())
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 from OViewPy.da import da
 import cv2
@@ -266,7 +442,7 @@ import cv2
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-layer = Layer(server=server,layerName="Town_MOI")
+layer = VectorLayer(server=server,layerName="Town_MOI")
 # 取得圖片，取得成功會回傳圖片bytes資料
 img = layer.getMapImage(
     boundary=GeoBoundary(147522.218692, 2422004.773002,
@@ -296,14 +472,14 @@ da.saveImg(img=blurred, savePath=".", imgName="高斯模糊", imgType="jpg")
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 from OViewPy.da import da
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-map = Layer(server=server, layerName="Town_MOI")
+map = VectorLayer(server=server, layerName="Town_MOI")
 # 設定範圍
 geo = GeoBoundary(147522.218692, 2422004.773002,
                   351690.114369, 2813163.248085)
@@ -319,13 +495,13 @@ print(type(npRet[0]))
 
 ```python
 from OViewPy.server import Server
-from OViewPy.layer import Layer
+from OViewPy.layer import VectorLayer
 from OViewPy.varstruct import GeoBoundary
 
 # 綁定Server物件
 server = Server(url="http://127.0.0.1:8080")
 # 綁定Layer物件
-map = Layer(server=server,layerName="Town_MOI")
+map = VectorLayer(server=server,layerName="Town_MOI")
 # 設定範圍
 geo = GeoBoundary(147522.218692, 2422004.773002,
                   351690.114369, 2813163.248085)

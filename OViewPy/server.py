@@ -1,8 +1,11 @@
 import string
+import requests
+import threading
+import time
 
 from numpy import number
+from progress.spinner import Spinner
 from OViewPy.varstruct import VarStruct
-import requests
 
 
 class Server:
@@ -61,8 +64,9 @@ class Server:
             ret.FromJson(jsonStr)
             return True
         else:
-            print("Server Error!")
-            return False
+            jsonStr = response.text
+            print(jsonStr)
+            raise SystemError('Server Error')
 
     def getLayerList(self):
         parm = VarStruct()
@@ -115,10 +119,22 @@ class Server:
         parm.Set("imageFilePath", imageFilePath)
         parm.Set("outputFilePath", imageFilePath + ".tif")
         parm.Set("layerName", layerName)
-
         parm.Set("epsg", epsg)
         ret = VarStruct()
-        self.DoCommand(command="Image2RasterLayer", parm=parm, ret=ret)
+        spinner = Spinner('Loading ')
+        docmdThread = threading.Thread(
+            target=self.DoCommand, args=("Image2RasterLayer", parm, ret,))
+        docmdThread.start()
+
+        def loadingAnimate():
+            while docmdThread.is_alive():
+                time.sleep(0.1)
+                spinner.next()
+            spinner.finish()
+        t = threading.Thread(target=loadingAnimate)
+        t.start()
+        docmdThread.join()
+        print("Done！")
         return
 
     def saveVectorFileToServer(self, VectorFilePath: string, layerName: string, epsg: number = 4326):
@@ -127,5 +143,18 @@ class Server:
         parm.Set("layerName", layerName)
         parm.Set("epsg", epsg)
         ret = VarStruct()
-        self.DoCommand(command="VectorFile2VectorrLayer", parm=parm, ret=ret)
+        spinner = Spinner('Loading ')
+        docmdThread = threading.Thread(
+            target=self.DoCommand, args=("VectorFile2VectorrLayer", parm, ret,))
+        docmdThread.start()
+
+        def loadingAnimate():
+            while docmdThread.is_alive():
+                time.sleep(0.1)
+                spinner.next()
+            spinner.finish()
+        t = threading.Thread(target=loadingAnimate)
+        t.start()
+        docmdThread.join()
+        print("Done！")
         return
