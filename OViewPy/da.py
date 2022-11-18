@@ -10,6 +10,9 @@ from progress.bar import Bar
 from shapely.geometry import shape, mapping
 from sridentify import Sridentify
 from OViewPy.varstruct import GeoBoundary, VarStruct
+import rasterio
+from rasterio.transform import from_bounds
+
 
 
 class da:
@@ -29,93 +32,86 @@ class da:
         return array.tobytes()
 
     @staticmethod
-    def vectorEmtityToNumPyArray(emtity):
-        if emtity is None:
+    def vectorEntityToNumPyArray(Entity):
+        if Entity is None:
             return
-        if type(emtity) == list:
+        if type(Entity) == list:
             geoList = []
-            for i in range(len(emtity)):
-                emtityDict = emtity[i].ToDict()
+            for i in range(len(Entity)):
+                EntityDict = Entity[i].ToDict()
                 geoList.append(np.asarray(
-                    emtityDict["coordinates"], dtype=object))
+                    EntityDict["coordinates"], dtype=object))
             return geoList
-        elif type(emtity) == VarStruct:
-            emtityDict = emtity.ToDict()
-            return np.asarray(emtityDict["coordinates"], dtype=object)
+        elif type(Entity) == VarStruct:
+            EntityDict = Entity.ToDict()
+            return np.asarray(EntityDict["coordinates"], dtype=object)
         else:
             return None
 
     @staticmethod
-    def numPyArrayToVarStruct(emtity):
-        if emtity is None:
+    def __makeEnt2VarStruct(Entity) -> VarStruct:
+        varEm = VarStruct()
+        if Entity.ndim == 1:
+            varEm.Set("type", "Point")
+            varEm.Set("coordinates", Entity.tolist())
+        elif Entity.ndim == 2:
+            if type(Entity[0][0]) == list:
+                varEm.Set("type", "MultiPolygon")
+                varEm.Set("coordinates", Entity.tolist())
+            else:
+                varEm.Set("type", "LineString")
+                varEm.Set("coordinates", Entity.tolist())
+        elif Entity.ndim == 4:
+            varEm.Set("type", "MultiPolygon")
+            varEm.Set("coordinates", Entity.tolist())
+        return varEm
+
+    @staticmethod
+    def numPyArrayToVarStruct(Entity):
+        if Entity is None:
             return None
-        if type(emtity) == list:
+        if type(Entity) == list:
             geoList = []
-            for i in range(len(emtity)):
-                varEm = VarStruct()
-                if emtity[i].ndim == 1:
-                    varEm.Set("type", "Point")
-                    varEm.Set("coordinates", emtity[i].tolist())
-                elif emtity[i].ndim == 2:
-                    if type(emtity[i][0][0]) == list:
-                        varEm.Set("type", "MultiPolygon")
-                        varEm.Set("coordinates", emtity[i].tolist())
-                    else:
-                        varEm.Set("type", "LineString")
-                        varEm.Set("coordinates", emtity[i].tolist())
-                elif emtity[i].ndim == 4:
-                    varEm.Set("type", "MultiPolygon")
-                    varEm.Set("coordinates", emtity[i].tolist())
+            for i in range(len(Entity)):
+                ent = Entity[i]
+                varEm = da.__makeEnt2VarStruct(ent)
                 geoList.append(varEm)
             return geoList
-        elif type(emtity) == np.ndarray:
-            varEm = VarStruct()
-            if emtity.ndim == 1:
-                varEm.Set("type", "Point")
-                varEm.Set("coordinates", emtity.tolist())
-            elif emtity.ndim == 2:
-                if type(emtity[0][0]) == list:
-                    varEm.Set("type", "MultiPolygon")
-                    varEm.Set("coordinates", emtity.tolist())
-                else:
-                    varEm.Set("type", "LineString")
-                    varEm.Set("coordinates", emtity.tolist())
-            elif emtity.ndim == 4:
-                varEm.Set("type", "MultiPolygon")
-                varEm.Set("coordinates", emtity.tolist())
+        elif type(Entity) == np.ndarray:
+            varEm = da.__makeEnt2VarStruct(Entity)
             return varEm
         else:
             return None
 
     @staticmethod
-    def vectorEmtityToShapely(emtity):
-        if emtity is None:
+    def vectorEntityToShapely(Entity):
+        if Entity is None:
             return
-        if type(emtity) == list:
+        if type(Entity) == list:
             geoList = []
-            for i in range(len(emtity)):
-                emtityDict = emtity[i].ToDict()
-                geoList.append(shape(emtityDict))
+            for i in range(len(Entity)):
+                EntityDict = Entity[i].ToDict()
+                geoList.append(shape(EntityDict))
             return geoList
-        elif type(emtity) == VarStruct:
-            return shape(emtity.ToDict())
+        elif type(Entity) == VarStruct:
+            return shape(Entity.ToDict())
         else:
             return None
 
     @staticmethod
-    def shapelyToVarstruct(emtity):
-        if emtity is None:
+    def shapelyToVarstruct(Entity):
+        if Entity is None:
             return None
-        if type(emtity) == list:
+        if type(Entity) == list:
             geoList = []
-            for i in range(len(emtity)):
+            for i in range(len(Entity)):
                 varEm = VarStruct()
-                varEm.FromJson(json.dumps(mapping(emtity[i])))
+                varEm.FromJson(json.dumps(mapping(Entity[i])))
                 geoList.append(varEm)
             return geoList
         else:
             varEm = VarStruct()
-            varEm.FromJson(json.dumps(mapping(emtity)))
+            varEm.FromJson(json.dumps(mapping(Entity)))
             return varEm
 
     @staticmethod
@@ -179,9 +175,9 @@ class da:
             return False
         if type(sourceGeo[0]) == np.ndarray:
             sourceGeo = da.numPyArrayToVarStruct(sourceGeo)
-            sourceGeo = da.vectorEmtityToShapely(sourceGeo)
+            sourceGeo = da.vectorEntityToShapely(sourceGeo)
         elif type(sourceGeo[0]) == VarStruct:
-            sourceGeo = da.vectorEmtityToShapely(sourceGeo)
+            sourceGeo = da.vectorEntityToShapely(sourceGeo)
         fileIndex = 1
         filePath = f"{savePath}/{fileName}"
         while os.path.exists(filePath+".shp"):
@@ -235,3 +231,29 @@ class da:
         ident.from_epsg(epsg)
         ident.to_prj(f'{filePath}.prj')
         return True
+    
+       
+    @staticmethod
+    def numPyArrayToTIF(Entity: np.ndarray,  boundary: GeoBoundary, savePath: string = ".", fileName: string = "defaultTIF", width: int = 21600, height: int = 21600):
+        if Entity is None:
+            return None
+        filePath = f"{savePath}/{fileName}.tif"
+        fileIndex = 1
+        while os.path.exists(filePath):
+            fileIndex += 1
+            filePath = f"{savePath}/{fileName}{fileIndex}.tif"
+        with rasterio.open(
+            filePath,
+            'w',
+            driver='GTiff',
+            height=height,
+            width=width,
+            crs="EPSG:4326",
+            count=1,
+            transform=from_bounds(boundary.west, boundary.south, boundary.east,
+                                  boundary.north, width, height),
+            dtype=Entity.dtype
+        ) as dst:
+            dst.write(Entity, 1)
+            return True
+

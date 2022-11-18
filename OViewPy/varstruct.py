@@ -5,6 +5,39 @@ import math
 import json
 from pickle import FALSE
 
+class LAYER_TYPE(Enum):
+    NONE = 0,
+    SET = 1,
+    MERGE = 2,
+    VECTOR_BASE = 32,
+    VECTOR_ORACLE = 33,
+    VECTOR_SQLSERVER = 34,
+    VECTOR_POSTGRESQL = 35,
+    RASTER_BASE = 64,
+    RASTER_WMS = 65,
+    RASTER_WMTS = 66,
+    RASTER_DWG = 67,
+    CUSTOM = 96,
+    TERRAIN_BASE = 128,
+    OV_TERRAIN = 256,
+    OV_PHOTOGRAMMETRYMODEL = 257,
+    OV_PIPELINE = 258,
+    OV_TILEMAP = 259,
+    OV_WMS = 260,
+    OV_MESH = 261,
+    OV_VECTOR = 262,
+    OV_LIDAR = 263,
+    OV_MESHPOINTS = 264,
+    OV_MULTIWATER = 265,
+    OV_CITYMESH = 266,
+    OV_OGCI3S = 267,
+    OV_MODEL = 268,
+    OV_MODELSET = 269,
+    OV_SENSORTHINGS = 270,
+    OV_POINTCLOUD = 271,
+    OV_STREETVIEW = 272,
+    OV_SCENE = 273,
+    OV_PROJECTOR = 274
 
 class GEO_STATUS(Enum):
     LEFT = 1
@@ -659,11 +692,12 @@ class VarStruct:
         return self[key]
 
     def ToJson(self, includeZ=False):
-        return json.dumps(self.__data, default=lambda obj: obj.ToJsonDict(includeZ))
+        # ensure_ascii=False是為了避免中文亂碼的問題
+        return json.dumps(self.__data, ensure_ascii=False, default=lambda obj: obj.ToJsonDict(includeZ))
 
     def ToDict(self, includeZ=False):
         jsonStr = json.dumps(
-            self.__data, default=lambda obj: obj.ToJsonDict(includeZ))
+            self.__data,  ensure_ascii=False, default=lambda obj: obj.ToJsonDict(includeZ))
         return json.loads(jsonStr)
 
     def __JsonDeserialize(self, jsonValue):

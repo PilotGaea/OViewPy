@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="OViewPy",
-    version="1.1.2",
+    version="1.2.0",
     author="louis.li",
     author_email="louis.li@pilotgaea.com.tw",
     description="PilotGaea O'View Map Server API for Python",

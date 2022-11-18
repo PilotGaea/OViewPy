@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: OViewPy
-Version: 1.1.2
+Version: 1.2.0
 Summary: PilotGaea O'View Map Server API for Python
 Home-page: https://github.com/PilotGaea/OViewPy
 Author: louis.li
@@ -16,10 +16,8 @@ License-File: license.txt
 
 # PilotGaea O'View Map Server API for Python
 
-使用 PilotGaea O'View Map Server API for Python 在 Python 中處理O'View Map Server發布的地圖和地理空間數據。
-
-這個library可讀取、編輯、分析、上架由O'View Map Server發布之地圖圖像與向量資料，並可透過API操作輸出及發佈處理後的成果。
-
+使用 PilotGaea O'View Map Server API for Python 在 Python 中處理O'View Map Server發布的地圖和地理空間數據。  
+這個library可讀取、編輯、分析、上架由O'View Map Server發布之地圖圖像與向量資料，並可透過API操作輸出及發佈處理後的成果。  
 此library只支援由 O'View Map Server 發佈的圖資，暫不支援外部資料處理。
 
 ## 安裝PliotGaea Python Module
@@ -27,6 +25,12 @@ License-File: license.txt
 ```shell
 pip install OViewPy
 ```
+
+## 安裝Server端Plugin
+
+由於需要透過O'View Map Server 取得圖資，所以需要先安裝相關的Plugin。  
+相關的Plugin放置於安裝目錄下的Python資料夾下(`C:\Program Files\PilotGaea\TileMap\Python`)。  
+請將資料夾內的dll檔複製進安裝目錄下的plugins資料夾內(`C:\Program Files\PilotGaea\TileMap\plugins`)，並重新啟動Server即可完成安裝。
 
 ## 初始化Server物件
 
@@ -58,7 +62,7 @@ print("DoCommand URL：",server.docmdURL)
 
 ### 取得圖層列表
 
-綁定Server物件後，可透過`getLayerList`取得2D圖層列表詳細資訊。<br/>
+綁定Server物件後，可透過`getLayerList`取得2D圖層列表詳細資訊。  
 亦可使用`getOViewLayerList`取得3D圖層列表詳細資訊。
 
 ```python
@@ -166,19 +170,260 @@ map = VectorLayer(server=server, layerName="Town_MOI")
 # 設定搜尋條件
 sql = "County_ID==64"
 # 取得向量資料
-ret = map.getVectorEmtity(epsg=3826,sql=sql)
+ret = map.getVectorEntity(epsg=3826,sql=sql)
 # 將向量資料存成SHP檔
 da.saveAsShapeFile(sourceGeo=ret["geo"],sourceAttr=ret["attr"],fileName="TestShp_Kh")
 # 將SHP檔上架至伺服器
 server.saveVectorFileToServer(VectorFilePath="D:\\NCHCProject\\jupyter_notebook\\TestShp_Kh.shp",layerName="TestShp_Kh",epsg=3826)
 ```
 
+#### 將tif檔轉成dem檔，並將dem檔上架伺服器為地形圖層
+
+於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.tifToDem`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功可以透過`server.save3dToServer`將此圖層上架至伺服器  
+`server.save3dToServer`可以透過id或是DB位置將其上架至伺服器
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import GeoBoundary
+from OViewPy.varstruct import LAYER_TYPE
+
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# tif檔轉成dem檔
+id = server.tifToDem(inputTifFile="defaultTIF.tif", outputDemFile="defaultDEM2.dem")
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+# dem檔轉成地形圖層
+id = server.convertTerrain("testDem", "testDem.DB", "./defaultDEM2.dem", "4326")
+# 將此地形圖層上架至伺服器
+server.save3dToServer(dbLayerName="testDem", layerName="testDem", layerType=LAYER_TYPE.OV_TERRAIN.name, dbUrl="./testDem.DB")
+```
+
+#### 將傾斜攝影上架至伺服器
+
+透過綁定的server物件，並提供欲設定的圖層名稱(`layerName`)及輸出格式(`exportType`)，將傾斜攝影轉檔並上架至伺服器  
+由於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.convertPhotogrammetry`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功透過`server.save3dToServer`依DB位置將圖層上架至伺服器(若輸出檔案格式為3DTILES則不上架)  
+| 參數名稱 | Type | 預設值 | 可輸入值 | 說明 |
+| :-----: | :---: | :---: | :---: | :--: |
+| layerName | string | None | --- | 上架後的圖層名稱 |
+| layerDBFile | string | 預設名稱與layerName相同 | --- | 轉檔後產生的DB檔名稱 |
+| inputFileName | string | None | --- | 欲轉檔檔案位置 |
+| terrainDBFile | string | None | --- | 初始地形圖層位置 |
+| terrainName | string | None | --- | 初始地形圖層名稱 |
+| exportType | string | None | NORMAL、I3S、3DTILES | 輸出檔案格式 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import LAYER_TYPE
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 設定layer名稱
+layerName = "photogrammetry"
+# 設定exportType(可輸入'NORMAL' or 'I3S' or '3DTILES')
+exportType = "NORMAL"
+# 轉檔傾斜攝影圖層，並會生成其對應之DB
+id = server.convertPhotogrammetry(layerName=layerName,
+                                  layerDBFile=layerName + ".DB",
+                                  inputFileName="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\模型\\一門三節坊\\Acute3D\\一門三節坊\\Data\\LODTreeExport.xml", 
+                                  terrainDBFile="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\高程\\Terrain20M.DB", 
+                                  terrainName="terrain",
+                                  exportType=exportType)
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+
+# 將此圖層上架至伺服器
+if exportType.upper() == "NORMAL":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_PHOTOGRAMMETRYMODEL.name, dbUrl = layerName + ".DB")
+elif exportType.upper() == "I3S":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_OGCI3S.name, dbUrl = layerName + ".DB")
+```
+
+#### 將管線圖層轉檔並上架至伺服器
+
+透過綁定的server物件，並提供欲設定的圖層名稱(`layerName`)、檔案格式(`mlayerType`)及輸出格式(`exportType`)，將管線圖層轉檔並上架至伺服器  
+由於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.convertPipeline`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功透過`server.save3dToServer`依DB位置將圖層上架至伺服器(若輸出檔案格式為3DTILES則不上架)  
+| 參數名稱 | Type | 預設值 | 可輸入值 | 說明 |
+| :-----: | :---: | :---: | :---: | :--: |
+| layerName | string | None | --- | 上架後的圖層名稱 |
+| terrainName | string | None | --- | 初始地形圖層名稱 |
+| terrainDBFile | string | None | --- | 初始地形圖層位置 |
+| sourceFile | string | None | --- | 欲轉檔檔案位置 |
+| epsg | int | None | --- | 座標參考系統 |
+| mlayerType | string | None | PIPELINE、MANHOLE、EQUIPMENT | 欲轉檔檔案格式 |
+| exportType | string | None | NORMAL、I3S、3DTILES | 輸出檔案格式 |
+| layerDBFile | string | 預設名稱與layerName相同 | --- | 轉檔後產生的DB檔名稱 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import LAYER_TYPE
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 設定layer名稱
+layerName = "EQUIPMENTTry"
+# 設定mlayerType(可輸入'PIPELINE' or 'MANHOLE' or 'EQUIPMENT')
+mlayerType = "EQUIPMENT"
+# 設定exportType(可輸入'NORMAL' or 'I3S' or '3DTILES')
+exportType = "NORMAL"
+# 轉檔管線、人手孔及設備圖層，並會生成其對應之DB
+id = server.convertPipeline(layerName=layerName,
+                            terrainName="terrain",
+                            terrainDBFile="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\高程\\Terrain20M.DB", 
+                            sourceFile="C:\\Users\\vaness.chen\\Downloads\\台中全區SHP_T\\台中全區SHP_T1\\一般供電_設備.shp",
+                            epsg="3826",
+                            mlayerType=mlayerType,
+                            exportType=exportType,
+                            layerDBFile=layerName + ".DB",
+                            )
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+# 將此圖層上架至伺服器
+if exportType.upper() == "NORMAL":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_PIPELINE.name, dbUrl = layerName + ".DB")
+elif exportType.upper() == "I3S":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_OGCI3S.name, dbUrl = layerName + ".DB")
+```
+
+#### 將點雲圖層轉檔並上架至伺服器
+
+透過綁定的server物件，並提供欲設定的圖層名稱(`layerName`)及輸出格式(`exportType`)，將點雲圖層轉檔並上架至伺服器  
+由於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.convertPointcloud`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功透過`server.save3dToServer`依DB位置將圖層上架至伺服器(若輸出檔案格式為3DTILES則不上架)  
+| 參數名稱 | Type | 預設值 | 可輸入值 | 說明 |
+| :-----: | :---: | :---: | :---: | :--: |
+| layerName | string | None | --- | 上架後的圖層名稱 |
+| layerDBFile | string | 預設名稱與layerName相同 | --- | 轉檔後產生的DB檔名稱 |
+| pointcloudFileNames | string | None | --- | 欲轉檔檔案位置 |
+| terrainName | string | None | --- | 初始地形圖層名稱 |
+| terrainDBFile | string | None | --- | 初始地形圖層位置 |
+| sourceEPSG | int | None | --- | 座標參考系統 |
+| exportType | string | None | NORMAL、I3S、3DTILES | 輸出檔案格式 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import LAYER_TYPE
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 設定layer名稱
+layerName = "PointcloudTry"
+# 設定exportType(可輸入'NORMAL' or 'I3S' or '3DTILES')
+exportType = "NORMAL"
+# 轉檔管線圖層，並會生成其對應之DB
+id = server.convertPointcloud(layerName=layerName,
+                              layerDBFile=layerName + ".DB",
+                              pointcloudFileNames="C:\\Users\\vaness.chen\\Downloads\\點雲圖層\\點雲圖層\\field-1.las",
+                              terrainName="terrain",
+                              terrainDBFile="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\高程\\Terrain20M.DB",
+                              sourceEPSG="3826",
+                              exportType=exportType
+                             )
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+# 將此圖層上架至伺服器
+if exportType.upper() == "NORMAL":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_POINTCLOUD.name, dbUrl = layerName + ".DB")
+elif exportType.upper() == "I3S":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_OGCI3S.name, dbUrl = layerName + ".DB")
+```
+
+#### 將shp檔轉成ModelSet並上架至伺服器
+
+透過綁定的server物件，並提供欲設定的圖層名稱(`layerName`)及輸出格式(`exportType`)，將shp檔轉檔模型集並上架至伺服器  
+由於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.shpToModelSet`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功透過`server.save3dToServer`依DB位置將圖層上架至伺服器(若輸出檔案格式為3DTILES則不上架)  
+| 參數名稱 | Type | 預設值 | 可輸入值 | 說明 |
+| :-----: | :---: | :---: | :---: | :--: |
+| layerName | string | None | --- | 上架後的圖層名稱 |
+| layerDBFile | string | 預設名稱與layerName相同 | --- | 轉檔後產生的DB檔名稱 |
+| terrainName | string | None | --- | 初始地形圖層名稱 |
+| terrainDBFile | string | None | --- | 初始地形圖層位置 |
+| sourceFileName | string | None | --- | 欲轉檔檔案位置 |
+| heightField | string | None | --- | 屋頂高欄位的名稱 |
+| epsg | int | None | --- | 座標參考系統 |
+| exportType | string | None | NORMAL、I3S、3DTILES | 輸出檔案格式 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import LAYER_TYPE
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 設定layer名稱
+layerName = "shpModelSetTry"
+# 設定exportType(可輸入'NORMAL' or 'I3S' or '3DTILES')
+exportType = "NORMAL"
+# 轉檔管線圖層，並會生成其對應之DB
+id = server.shpToModelSet(layerName=layerName,
+                          layerDBFile=layerName + ".DB",
+                          terrainName="terrain",
+                          terrainDBFile="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\高程\\Terrain20M.DB",
+                          sourceFileName="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\模型\\modelset練習用\\TaipeiBuilding2.shp",
+                          heightField="屋頂高程",
+                          epsg=4326,
+                          exportType=exportType)
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+# 將此圖層上架至伺服器
+if exportType.upper() == "NORMAL":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_MODELSET.name, dbUrl = layerName + ".DB")
+elif exportType.upper() == "I3S":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_OGCI3S.name, dbUrl = layerName + ".DB")
+```
+
+#### 將huge檔轉成Model並上架至伺服器
+
+透過綁定的server物件，並提供欲設定的圖層名稱(`layerName`)及輸出格式(`exportType`)，將huge檔轉檔模型並上架至伺服器  
+由於3d的轉檔需要較久的時間，因此轉檔的函式會回傳一個id(如: `server.hugeModelToModelLayer`)  
+可以透過此id，去跟server詢問進度  
+當轉檔成功透過`server.save3dToServer`依DB位置將圖層上架至伺服器(若輸出檔案格式為3DTILES則不上架)  
+| 參數名稱 | Type | 預設值 | 可輸入值 | 說明 |
+| :-----: | :---: | :---: | :---: | :--: |
+| dbPath | string | 預設名稱與layerName相同 | --- | 轉檔後產生的DB檔名稱 |
+| layerName | string | None | --- | 上架後的圖層名稱 |
+| terrainDBFile | string | None | --- | 初始地形圖層位置 |
+| terrainName | string | None | --- | 初始地形圖層名稱 |
+| sourceFileName | string | None | --- | 欲轉檔檔案位置 |
+| exportType | string | None | NORMAL、I3S、3DTILES | 輸出檔案格式 |
+
+```python
+from OViewPy.server import Server
+from OViewPy.varstruct import LAYER_TYPE
+
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 設定layer名稱
+layerName = "hugeModelTry"
+# 設定exportType(可輸入'NORMAL' or 'I3S' or '3DTILES')
+exportType = "NORMAL"
+# 轉檔HugeModel圖層，並會生成其對應之DB
+id = server.hugeModelToModelLayer(dbPath=layerName + ".DB",
+                                  layerName=layerName,
+                                  terrainDBFile="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\高程\\Terrain20M.DB",
+                                  terrainName="terrain",
+                                  sourceFileName="C:\\Users\\vaness.chen\\Desktop\\3DTEST\\基本圖資\\模型\\HugeModel練習用\\-Z_Y.obj",
+                                  exportType=exportType
+                                 )
+# 回傳轉檔進度直到轉檔完成
+server.getConvert3dProgressToFinish(id)
+# 將此圖層上架至伺服器
+if exportType.upper() == "NORMAL":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_MODEL.name, dbUrl = layerName + ".DB")
+elif exportType.upper() == "I3S":
+    server.save3dToServer(dbLayerName=layerName, layerName=layerName, layerType=LAYER_TYPE.OV_OGCI3S.name, dbUrl = layerName + ".DB")
+```
+
 ## Layer Module (2D Layer)
 
 ### 取得圖層物件
 
-此Module分為`RasterLayer`與`VectorLayer`兩種圖層，在初始化圖層時請選擇正確的圖層分類。<br/>
-第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。<br/>
+此Module分為`RasterLayer`與`VectorLayer`兩種圖層，在初始化圖層時請選擇正確的圖層分類。  
+第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。  
 取得圖層物件後，即可透過``getLayerInfo``取得圖層相關資訊。
 
 ```python
@@ -227,7 +472,7 @@ img = layer.getMapImage(
 da.showImg(img)
 ```
 
-如果圖層物件為`VectorLayer`，可透過`getVectorEmtity`取得一定範圍內的向量資料。<br/>
+如果圖層物件為`VectorLayer`，可透過`getVectorEntity`取得一定範圍內的向量資料。  
 此Function的參數如下：
 
 | 參數名稱 | Type | 預設值 | 說明 |
@@ -248,15 +493,15 @@ map = VectorLayer(server=server, layerName="Town_MOI")
 # 設定搜尋條件
 sql = "County_ID=64"
 # 取得向量資料
-ret = map.getVectorEmtity(epsg=3826,sql=sql)
+ret = map.getVectorEntity(epsg=3826,sql=sql)
 print("Geo：", ret["geo"][0].ToDict())
 print("Attr：", ret["attr"][0].ToDict())
 ```
 
-## OViewLayer Module 
+## OViewLayer Module
 
-此Module分為`TerrainLayer`、`PipeLineLayer`、`ModelLayer`、`ModelSetLayer`等4種3D模型圖層。<br/>
-第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。<br/>
+此Module分為`TerrainLayer`、`PipeLineLayer`、`ModelLayer`、`ModelSetLayer`等4種3D模型圖層。  
+第一個參數(`server`)放置已綁定的Server物件，第二個參數(`layerName`)放置要取得的圖層名稱。  
 取得圖層物件後，即可透過``getLayerInfo``取得圖層相關資訊。
 
 ```python
@@ -416,9 +661,9 @@ Terrain.contourLineAnalysis(boundary=boundary, cellDemSize=500, epsg=4326,fileTy
                       savePath=".", fileName="defaultContourLine")
 ```
 
-### OViewEmtityLayer
+### OViewEntityLayer
 
-除了`TerrainLayer`外，其餘三種圖層皆屬於`OViewEmtityLayer`，可透過`getVectorEmtity`取得圖層Emtity。
+除了`TerrainLayer`外，其餘三種圖層皆屬於`OViewEntityLayer`，可透過`getVectorEntity`取得圖層Entity。
 此Function參數如下：
 
 | 參數名稱 | Type | 預設值 | 說明 |
@@ -435,7 +680,7 @@ server = Server(url="http://127.0.0.1:8080")
 PipeLine = PipeLineLayer(server=server, layerName="TaichungPipeline")
 # Model = ModelLayer(server=server, layerName="ChungHsingBIM")
 # ModelSet = ModelSetLayer(server=server, layerName="TaichungKMZ")
-ret = PipeLine.getVectorEmtity()
+ret = PipeLine.getVectorEntity()
 print("Geo：", ret["geo"][0].ToDict())
 print("Attr：", ret["attr"][0].ToDict())
 ```
@@ -500,9 +745,9 @@ map = VectorLayer(server=server, layerName="Town_MOI")
 geo = GeoBoundary(147522.218692, 2422004.773002,
                   351690.114369, 2813163.248085)
 # 取得向量資料
-ret = map.getVectorEmtity(bound=geo,epsg=3826)
+ret = map.getVectorEntity(bound=geo,epsg=3826)
 # 將向量資料轉換成Numpy
-npRet = da.vectorEmtityToNumPyArray(ret["geo"])
+npRet = da.vectorEntityToNumPyArray(ret["geo"])
 # 顯示資料類型
 print(type(npRet[0]))
 ```
@@ -522,11 +767,32 @@ map = VectorLayer(server=server,layerName="Town_MOI")
 geo = GeoBoundary(147522.218692, 2422004.773002,
                   351690.114369, 2813163.248085)
 # 取得向量資料
-ret = map.getVectorEmtity(bound=geo)
+ret = map.getVectorEntity(bound=geo)
 # 將向量資料轉換成Numpy
-shpRet = da.vectorEmtityToShapely(ret["geo"])
+shpRet = da.vectorEntityToShapely(ret["geo"])
 # 顯示資料類型
 print(type(shpRet[0]))
+```
+
+#### 向量格式轉換成TIF
+
+```python
+from OViewPy.server import Server
+from OViewPy.oviewlayer import TerrainLayer
+from OViewPy.varstruct import GeoBoundary
+from OViewPy.da import da
+
+# 綁定Server物件
+server = Server(url="http://127.0.0.1:8080")
+# 綁定Layer物件
+Terrain = TerrainLayer(server=server, layerName="terrain")
+# 設定範圍
+boundary = GeoBoundary(119.981273, 21.892673,
+                       122.010898, 25.424327)
+# 取得向量資料
+matrix = Terrain.getDEMMatrix(boundary=boundary, cellDemSize=400, epsg=4326)
+# numpyArray輸出成tif檔
+da.numPyArrayToTIF(matrix, boundary=boundary, width=1500, height=1500)
 ```
 
 

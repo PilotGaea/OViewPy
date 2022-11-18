@@ -26,6 +26,8 @@ class Layer:
             info = ret.ToDict()
             if info["success"]:
                 self.__layerInfo = info["ret"][0]
+            else:
+                raise ValueError(f"{layerName} is not found")
 
     @property
     def server(self):
@@ -86,11 +88,11 @@ class RasterLayer(Layer):
 class VectorLayer(Layer):
     def __init__(self, server: Server, layerName: string) -> None:
         super().__init__(server, layerName)
-        if self.layerInfo["type"] != "Vector":
+        if self.layerInfo["type"] != "Vector":  # 防呆，預防本身設定的layer種類錯誤
             raise TypeError('This layer is not a VectorLayer')
-        pass
+           
 
-    def getVectorEmtity(self, bound=None, epsg: int = 4326, sql: str = "") -> dict:
+    def getVectorEntity(self, bound=None, epsg: int = 4326, sql: str = "") -> dict:
         param = VarStruct()
         fieldParam = VarStruct()
         fieldParam.Set("layername", self.layerName)
@@ -165,11 +167,11 @@ class VectorLayer(Layer):
                 attr.append(attrVS)
                 bar.next()
             bar.finish()
-            Emtity = {
+            Entity = {
                 "success": True,
                 "geo": geo,
                 "attr": attr
             }
-            return Emtity
+            return Entity
         else:
             return ret

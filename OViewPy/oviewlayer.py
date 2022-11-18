@@ -48,11 +48,11 @@ class OViewLayer:
         return self.__layerInfo
 
 
-class OViewEmtityLayer(OViewLayer):
+class OViewEntityLayer(OViewLayer):
     def __init__(self, server: Server, layerName: string) -> None:
         super().__init__(server, layerName)
 
-    def getVectorEmtity(self, bound=None, epsg: int = 4326, sql: str = "") -> dict:
+    def getVectorEntity(self, bound=None, epsg: int = 4326, sql: str = "") -> dict:
         param = VarStruct()
         fieldParam = VarStruct()
         fieldParam.Set("LAYERNAME", self.layerName)
@@ -123,12 +123,12 @@ class OViewEmtityLayer(OViewLayer):
                 attr.append(attrVS)
                 bar.next()
             bar.finish()
-            Emtity = {
+            Entity = {
                 "success": True,
                 "geo": geo,
                 "attr": attr
             }
-            return Emtity
+            return Entity
         else:
             return retDict
 
@@ -140,6 +140,7 @@ class TerrainLayer(OViewLayer):
             raise TypeError('This layer is not a TerrainLayer')
 
     def getDEMMatrix(self, boundary: GeoBoundary, cellDemSize: int = 500, epsg: int = 4326) -> np.ndarray:
+        """取得地形網格資料"""
         if boundary is None or type(boundary) != GeoBoundary:
             raise ValueError("You must pass either GeoBoundary")
         parm = VarStruct()
@@ -167,6 +168,7 @@ class TerrainLayer(OViewLayer):
             raise SystemError(ret.ToDict()["error"])
 
     def hillshadeAnalysis(self, boundary: GeoBoundary, cellDemSize: int = 500, epsg: int = 4326, azimuth: int = 30, altitude: int = 30, savePath: string = ".", fileName: string = "defaultDEM", width: int = 21600, height: int = 21600):
+        """取得山體陰影分析，並存成GeoTiff"""
         def hillshade(array, azimuth, angle_altitude):
             x, y = np.gradient(array)
             slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
@@ -200,6 +202,7 @@ class TerrainLayer(OViewLayer):
             return True
 
     def slopeAnalysis(self, boundary: GeoBoundary, cellDemSize: int = 500, epsg: int = 4326, savePath: string = ".", fileName: string = "defaultSlope", width: int = 21600, height: int = 21600):
+        """取得坡度分析，並存成GeoTiff"""
         def slope_gradient(z):
             x, y = np.gradient(z)
             slope = (np.pi/2. - np.arctan(np.sqrt(x*x + y*y)))
@@ -228,6 +231,7 @@ class TerrainLayer(OViewLayer):
             return True
 
     def aspectAnalysis(self, boundary: GeoBoundary, cellDemSize: int = 500, epsg: int = 4326, savePath: string = ".", fileName: string = "defaultAspect", width: int = 21600, height: int = 21600):
+        """取得坡向分析，並存成GeoTiff"""
         def aspect(z):
             x, y = np.gradient(z)
             return np.arctan2(-x, y)
@@ -255,6 +259,7 @@ class TerrainLayer(OViewLayer):
             return True
 
     def contourLineAnalysis(self, boundary: GeoBoundary, cellDemSize: int = 500, epsg: int = 4326, savePath: string = ".", fileName: string = "defaultContourLine", fileType: string = "image", width: int = 21600, height: int = 21600, levels: int = 20):
+        """取得等高線分析，並將結果存成png或geojson"""
         matrix = self.getDEMMatrix(
             boundary=boundary, cellDemSize=cellDemSize, epsg=epsg)
         xdata = []
@@ -304,21 +309,21 @@ class TerrainLayer(OViewLayer):
         print("Done!")
 
 
-class ModelLayer(OViewEmtityLayer):
+class ModelLayer(OViewEntityLayer):
     def __init__(self, server: Server, layerName: string) -> None:
         super().__init__(server, layerName)
         if self.layerInfo["type"] != "Model":
             raise TypeError('This layer is not a ModelLayer')
 
 
-class ModelSetLayer(OViewEmtityLayer):
+class ModelSetLayer(OViewEntityLayer):
     def __init__(self, server: Server, layerName: string) -> None:
         super().__init__(server, layerName)
         if self.layerInfo["type"] != "ModelSet":
             raise TypeError('This layer is not a ModelSetLayer')
 
 
-class PipeLineLayer(OViewEmtityLayer):
+class PipeLineLayer(OViewEntityLayer):
     def __init__(self, server: Server, layerName: string) -> None:
         super().__init__(server, layerName)
         if self.layerInfo["type"] != "Pipeline":
